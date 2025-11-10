@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Voice Assistant</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        
+        .container {
+            text-align: center;
+            max-width: 600px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 40px;
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 20px;
+        }
+        
+        .status {
+            font-size: 1.2em;
+            margin: 20px 0;
+            padding: 10px;
+            border-radius: 10px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .listening {
+            background: rgba(0, 255, 0, 0.3) !important;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.7; }
+            100% { opacity: 1; }
+        }
+        
+        button {
+            padding: 15px 30px;
+            font-size: 1.1em;
+            border: none;
+            border-radius: 10px;
+            background: #4CAF50;
+            color: white;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s;
+        }
+        
+        button:hover {
+            background: #45a049;
+            transform: translateY(-2px);
+        }
+        
+        button:disabled {
+            background: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        #transcript {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            min-height: 100px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        #response {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            min-height: 60px;
+            border: 2px solid rgba(76, 175, 80, 0.5);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎤 Simple Voice Assistant</h1>
+        <div id="status" class="status">Connecting...</div>
+        
+        <button id="startBtn" onclick="startListening()">Start Listening</button>
+        <button id="stopBtn" onclick="stopListening()" disabled>Stop Listening</button>
+        <button onclick="testSpeech()">🧪 Test</button>
+        
+        <div id="transcript">
+            <strong>What you said:</strong><br>
+            <span id="transcriptText">Waiting for speech...</span>
+        </div>
+        
+        <div id="response">
+            <strong>Assistant response:</strong><br>
+            <span id="responseText">Ready to help you!</span>
+        </div>
+    </div>
+
+   <script>
+    class SimpleVoiceAssistant {
+        constructor() {
+            this.socket = io();
+            this.elements = {
+                status: document.getElementById('status'),
+                transcriptText: document.getElementById('transcriptText'),
+                responseText: document.getElementById('responseText'),
+                startBtn: document.getElementById('startBtn'),
+                stopBtn: document.getElementById('stopBtn')
+            };
+            
+            this.isListening = false;
+            this.mediaRecorder = null;
+            this.audioChunks = [];
+            this.stream = null;
+            
+            this.setupSocketIO();
+            this.setupEventListeners();
+        }
+
+        setupSocketIO() {
+            this.socket.on('connect', () => {
+                console.log('✅ Connected to server');
+                this.elements.status.textContent = 'Status: Online';
+                this.elements.status.classList.remove('listening');
+            });
+            
+            this.socket.on('disconnect', () => {
+                console.log('❌ Disconnected from server');
+                this.elements.status.textContent = 'Status: Offline';
+            });
+            
+            this.socket.on('transcription_result', (data) => {
+                this.elements.transcriptText.textContent = data.text;
+            });
+            
+            this.socket.on('response_audio', (data) => {
+                this.elements.responseText.textContent = data.text;
+                this.playAudioResponse(data.audio_data);
+            });
+            
+            this.socket.on('response_text', (data) => {
+                this.elements.responseText.textContent = data.text;
+            });
+            
+            this.socket.on('server_status', (data) => {
+                console.log('Server status:', data);
+                this.elements.responseText.textContent = data.message;
+            });
+        }
+        
+        setupEventListeners() {
+            // Buttons already have onclick handlers in HTML
+        }
+
+        updateStatus(text, isListening = false) {
+            this.elements.status.textContent = `Status: ${text}`;
+            if (isListening) {
+                this.elements.status.classList.add('listening');
+            } else {
+                this.elements.status.classList.remove('listening');
+            }
+        }
+
+        startListening() {
+            if (this.isListening) return;
+
+            navigator.mediaDevices.getUserMedia({ audio: true })
+                .then(stream => {
+                    this.stream = stream;
+                    this.mediaRecorder = new MediaRecorder(stream);
+                    this.audioChunks = [];
+                    this.mediaRecorder.ondataavailable = event => {
+                        this.audioChunks.push(event.data);
+                    };
+
+                    this.mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+                        this.audioChunks = [];
+                        this.sendAudioToServer(audioBlob);
+                        this.stream.getTracks().forEach(track => track.stop());
+                        this.updateStatus('Processing...');
+                    };
+                    
+                    this.mediaRecorder.start();
+                    this.isListening = true;
+                    this.updateStatus('Listening...', true);
+                    this.elements.startBtn.disabled = true;
+                    this.elements.stopBtn.disabled = false;
+                    console.log('▶️ Recording started');
+                })
+                .catch(error => {
+                    console.error('❌ Error accessing microphone:', error);
+                    this.updateStatus('Error: Microphone access denied.');
+                });
+        }
+
+        stopListening() {
+            if (this.isListening && this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                this.mediaRecorder.stop();
+                this.isListening = false;
+                this.elements.startBtn.disabled = false;
+                this.elements.stopBtn.disabled = true;
+                console.log('⏹️ Recording stopped');
+            }
+        }
+        
+        sendAudioToServer(audioBlob) {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                const base64Audio = btoa(new Uint8Array(reader.result).reduce(
+                    (data, byte) => data + String.fromCharCode(byte), ''
+                ));
+                this.socket.emit('user_audio', { audio_data: base64Audio, language: 'en' });
+                console.log('⬆️ Sending audio to server');
+            };
+            reader.readAsArrayBuffer(audioBlob);
+        }
+        
+        playAudioResponse(audioData) {
+            try {
+                const audio = new Audio('data:audio/mp3;base64,' + audioData);
+                audio.play();
+            } catch (error) {
+                console.error('❌ Failed to play audio response:', error);
+            }
+        }
+
+        testSpeech() {
+            const text = 'hello this is a test message';
+            console.log('🧪 Sending test text:', text);
+            this.elements.transcriptText.textContent = text;
+            this.socket.emit('user_text_input', {
+                text: text,
+                language: 'en'
+            });
+        }
+    }
+    
+    // Global functions for buttons
+    let assistant;
+    
+    function startListening() {
+        assistant.startListening();
+    }
+    
+    function stopListening() {
+        assistant.stopListening();
+    }
+    
+    function testSpeech() {
+        assistant.testSpeech();
+    }
+    
+    // Initialize when page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        assistant = new SimpleVoiceAssistant();
+    });
+</script>
+</body>
+</html>

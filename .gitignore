@@ -1,0 +1,40 @@
+# ---- Python ----
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.db
+*.sqlite3
+
+# ---- Virtual Environment ----
+venv/
+.env
+.env.local
+
+# ---- OS ----
+.DS_Store
+Thumbs.db
+
+# ---- Logs ----
+*.log
+logs/
+models/
+# ---- Cache ----
+*.cache
+__cache__/
+
+# ---- Models & Temporary files ----
+*.onnx
+*.pt
+*.pth
+*.h5
+*.tflite
+memory_data/
+tts_cache/
+tmp/
+*.tmp
+*.webm
+
+# ---- IDE files ----
+.vscode/
+.idea/

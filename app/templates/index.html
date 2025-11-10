@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeeForMe - AI Vision Assistant for Accessibility</title>
+    
+    <!-- Bootstrap CSS with dark theme -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-purple: #6366f1;
+            --primary-blue: #3b82f6;
+            --accent-color: #8b5cf6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --bg-dark: #0f0f0f;
+            --bg-card: #1a1a1a;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1e1e2e 100%);
+            color: var(--text-light);
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        /* Full-screen start overlay */
+        .start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-blue) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.5s ease;
+        }
+        
+        .start-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
+        
+        .start-content {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .start-title {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .start-subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        
+        .start-instruction {
+            font-size: 1.2rem;
+            background: rgba(255,255,255,0.1);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            animation: pulse-glow 2s infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 0 30px rgba(255,255,255,0.4);
+            }
+        }
+        
+        /* Main interface */
+        .main-interface {
+            display: none;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .main-interface.active {
+            display: block;
+        }
+        
+        /* Animated assistant avatar */
+        .assistant-container {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+        
+        .assistant-avatar {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-blue));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .assistant-avatar.listening {
+            animation: listening-pulse 1.5s ease-in-out infinite;
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
+        }
+        
+        .assistant-avatar.speaking {
+            animation: speaking-wave 0.8s ease-in-out infinite;
+        }
+        
+        .assistant-avatar.processing {
+            animation: processing-spin 2s linear infinite;
+        }
+        
+        @keyframes listening-pulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            }
+            50% { 
+                transform: scale(1.1);
+                box-shadow: 0 0 40px rgba(99, 102, 241, 0.8);
+            }
+        }
+        
+        @keyframes speaking-wave {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.05) rotate(-2deg); }
+            75% { transform: scale(1.05) rotate(2deg); }
+        }
+        
+        @keyframes processing-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .assistant-icon {
+            font-size: 3rem;
+            color: white;
+        }
+        
+        /* Voice waves */
+        .voice-waves {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            opacity: 0;
+        }
+        
+        .voice-waves.active {
+            opacity: 1;
+        }
+        
+        .wave {
+            position: absolute;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            animation: wave-expand 2s linear infinite;
+        }
+        
+        .wave:nth-child(1) { animation-delay: 0s; }
+        .wave:nth-child(2) { animation-delay: 0.5s; }
+        .wave:nth-child(3) { animation-delay: 1s; }
+        
+        @keyframes wave-expand {
+            0% {
+                width: 100%;
+                height: 100%;
+                opacity: 1;
+            }
+            100% {
+                width: 300%;
+                height: 300%;
+                opacity: 0;
+            }
+        }
+        
+        /* Camera preview */
+        .camera-preview {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            width: 200px;
+            height: 150px;
+            background: var(--bg-card);
+            border-radius: 15px;
+            border: 2px solid var(--accent-color);
+            overflow: hidden;
+            z-index: 50;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        
+        .camera-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .camera-status {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+        
+        .camera-status.front { border-left: 3px solid var(--warning-color); }
+        .camera-status.back { border-left: 3px solid var(--success-color); }
+        
+        /* Status panel */
+        .status-panel {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            background: rgba(26, 26, 26, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            min-width: 250px;
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 50;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-icon {
+            width: 20px;
+            margin-right: 0.5rem;
+        }
+        
+        .status-icon.active { color: var(--success-color); }
+        .status-icon.inactive { color: var(--text-muted); }
+        .status-icon.error { color: var(--error-color); }
+        
+        /* Response display */
+        .response-container {
+            position: fixed;
+            bottom: 160px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 600px;
+            width: 90%;
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 40;
+        }
+        
+        .response-container.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .response-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        
+        .response-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+        
+        /* Accessibility features */
+        .sr-only {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
+            border: 0 !important;
+        }
+        
+        /* High contrast mode */
+        @media (prefers-contrast: high) {
+            :root {
+                --bg-dark: #000000;
+                --bg-card: #111111;
+                --text-light: #ffffff;
+                --primary-purple: #8b5cf6;
+                --primary-blue: #60a5fa;
+            }
+        }
+        
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .start-title { font-size: 2.5rem; }
+            .start-subtitle { font-size: 1.2rem; }
+            .assistant-avatar { width: 100px; height: 100px; }
+            .assistant-icon { font-size: 2.5rem; }
+            .camera-preview { width: 150px; height: 112px; }
+            .status-panel { min-width: 200px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Screen reader announcements -->
+    <div id="sr-announcements" class="sr-only" role="status" aria-live="assertive" aria-atomic="true">
+        SeeForMe is loading...
+    </div>
+    
+    <!-- Full-screen start overlay -->
+    <div id="start-overlay" class="start-overlay">
+        <div class="start-content">
+            <h1 class="start-title">SeeForMe</h1>
+            <p class="start-subtitle">Your AI Vision Assistant</p>
+            <div class="start-instruction">
+                <i class="fas fa-hand-pointer me-2"></i>
+                Tap anywhere to start
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main interface -->
+    <div id="main-interface" class="main-interface">
+        <!-- Status panel -->
+        <div id="status-panel" class="status-panel">
+            <div class="status-item">
+                <i id="voice-status-icon" class="fas fa-microphone status-icon inactive"></i>
+                <span id="voice-status-text">Voice: Initializing</span>
+            </div>
+            <div class="status-item">
+                <i id="camera-status-icon" class="fas fa-camera status-icon inactive"></i>
+                <span id="camera-status-text">Camera: Requesting permission</span>
+            </div>
+            <div class="status-item">
+                <i id="ai-status-icon" class="fas fa-brain status-icon inactive"></i>
+                <span id="ai-status-text">AI: Loading</span>
+            </div>
+            <div class="status-item">
+                <i id="tts-status-icon" class="fas fa-volume-up status-icon inactive"></i>
+                <span id="tts-status-text">Speech: Ready</span>
+            </div>
+        </div>
+        
+        <!-- Camera preview -->
+        <div id="camera-preview" class="camera-preview" style="display: none;">
+            <video id="camera-video" autoplay muted playsinline></video>
+            <div id="camera-status-badge" class="camera-status">Front Camera</div>
+        </div>
+        
+        <!-- Response container -->
+        <div id="response-container" class="response-container">
+            <div id="response-text" class="response-text"></div>
+            <div class="response-meta">
+                <span id="response-timestamp"></span>
+                <i id="speaking-indicator" class="fas fa-volume-up" style="display: none;"></i>
+            </div>
+        </div>
+        
+        <!-- Animated assistant avatar -->
+        <div class="assistant-container">
+            <div id="assistant-avatar" class="assistant-avatar">
+                <i id="assistant-icon" class="fas fa-robot assistant-icon"></i>
+                <div id="voice-waves" class="voice-waves">
+                    <div class="wave"></div>
+                    <div class="wave"></div>
+                    <div class="wave"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Audio element for TTS -->
+    <audio id="tts-audio" preload="auto"></audio>
+    
+    <!-- Scripts -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+        /**
+         * SeeForMe - AI Vision Assistant
+         * Complete voice-first accessibility interface
+         */
+        class SeeForMeAssistant {
+            constructor() {
+                this.socket = null;
+                this.mediaStream = null;
+                this.isActive = false;
+                this.isListening = false;
+                this.currentCameraMode = 'front';
+                this.speechRecognition = null;
+                this.speechSynthesis = window.speechSynthesis;
+                
+                // UI elements
+                this.elements = {
+                    startOverlay: document.getElementById('start-overlay'),
+                    mainInterface: document.getElementById('main-interface'),
+                    assistantAvatar: document.getElementById('assistant-avatar'),
+                    assistantIcon: document.getElementById('assistant-icon'),
+                    voiceWaves: document.getElementById('voice-waves'),
+                    cameraPreview: document.getElementById('camera-preview'),
+                    cameraVideo: document.getElementById('camera-video'),
+                    cameraStatusBadge: document.getElementById('camera-status-badge'),
+                    responseContainer: document.getElementById('response-container'),
+                    responseText: document.getElementById('response-text'),
+                    responseTimestamp: document.getElementById('response-timestamp'),
+                    speakingIndicator: document.getElementById('speaking-indicator'),
+                    srAnnouncements: document.getElementById('sr-announcements'),
+                    
+                    // Status indicators
+                    voiceStatusIcon: document.getElementById('voice-status-icon'),
+                    voiceStatusText: document.getElementById('voice-status-text'),
+                    cameraStatusIcon: document.getElementById('camera-status-icon'),
+                    cameraStatusText: document.getElementById('camera-status-text'),
+                    aiStatusIcon: document.getElementById('ai-status-icon'),
+                    aiStatusText: document.getElementById('ai-status-text'),
+                    ttsStatusIcon: document.getElementById('tts-status-icon'),
+                    ttsStatusText: document.getElementById('tts-status-text')
+                };
+                
+                this.initialize();
+            }
+            
+            initialize() {
+                console.log('🚀 Initializing SeeForMe Assistant');
+                
+                // Setup event listeners
+                this.setupEventListeners();
+                
+                // Initialize Socket.IO
+                this.initializeSocket();
+                
+                // Setup speech recognition
+                this.initializeSpeechRecognition();
+                
+                console.log('✅ SeeForMe Assistant initialized');
+            }
+            
+            setupEventListeners() {
+                // Start overlay click
+                this.elements.startOverlay.addEventListener('click', () => {
+                    this.startAssistant();
+                });
+                
+                // Keyboard accessibility
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        if (!this.isActive) {
+                            e.preventDefault();
+                            this.startAssistant();
+                        }
+                    }
+                });
+                
+                // Handle visibility change
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        this.pauseAssistant();
+                    } else {
+                        this.resumeAssistant();
+                    }
+                });
+            }
+            
+            initializeSocket() {
+                // Force polling transport to avoid WebSocket timeout issues
+                this.socket = io({
+                    transports: ['polling'],
+                    timeout: 20000,
+                    forceNew: true,
+                    upgrade: false
+                });
+                
+                this.socket.on('connect', () => {
+                    console.log('✅ Connected to SeeForMe backend');
+                    this.announceToScreenReader('Connected to SeeForMe assistant');
+                });
+                
+                this.socket.on('disconnect', () => {
+                    console.log('❌ Disconnected from backend');
+                    this.announceToScreenReader('Disconnected from assistant');
+                });
+                
+                this.socket.on('system_status', (data) => {
+                    this.handleSystemStatus(data);
+                });
+                
+                this.socket.on('assistant_started', (data) => {
+                    this.handleAssistantStarted(data);
+                });
+                
+                this.socket.on('speech_recognized', (data) => {
+                    this.handleSpeechRecognized(data);
+                });
+                
+                this.socket.on('processing_intent', (data) => {
+                    this.handleProcessingIntent(data);
+                });
+                
+                this.socket.on('camera_switched', (data) => {
+                    this.handleCameraSwitched(data);
+                });
+                
+                this.socket.on('assistant_response', (data) => {
+                    this.handleAssistantResponse(data);
+                });
+                
+                this.socket.on('status_update', (data) => {
+                    this.updateStatusPanel(data);
+                });
+                
+                this.socket.on('system_error', (data) => {
+                    console.error('System error:', data);
+                    this.announceToScreenReader(`Error: ${data.message}`);
+                });
+                
+                this.socket.on('test_connection', (data) => {
+                    console.log('🔗 Test connection received:', data);
+                });
+            }
+            
+            initializeSpeechRecognition() {
+                if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+                    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    this.speechRecognition = new SpeechRecognition();
+                    
+                    this.speechRecognition.continuous = true;
+                    this.speechRecognition.interimResults = false;
+                    this.speechRecognition.lang = 'en-US';
+                    
+                    this.speechRecognition.onstart = () => {
+                        console.log('🎤 Speech recognition started');
+                        this.isListening = true;
+                        this.updateAvatarState('listening');
+                        this.updateVoiceStatus('listening', 'Listening...');
+                    };
+                    
+                    this.speechRecognition.onresult = (event) => {
+                        const result = event.results[event.results.length - 1];
+                        if (result.isFinal) {
+                            const text = result[0].transcript.trim();
+                            const confidence = result[0].confidence || 1.0;
+                            
+                            console.log('🗣️ Speech recognized:', text);
+                            // Send to backend for processing
+                            this.socket.emit('speech_recognized', {
+                                text: text,
+                                confidence: confidence,
+                                language: 'en'
+                            });
+                        }
+                    };
+                    
+                    this.speechRecognition.onerror = (event) => {
+                        console.error('❌ Speech recognition error:', event.error);
+                        this.updateVoiceStatus('error', `Error: ${event.error}`);
+                        
+                        // Auto-restart on error
+                        setTimeout(() => {
+                            if (this.isActive) {
+                                this.startListening();
+                            }
+                        }, 2000);
+                    };
+                    
+                    this.speechRecognition.onend = () => {
+                        console.log('🎤 Speech recognition ended');
+                        this.isListening = false;
+                        this.updateAvatarState('idle');
+                        
+                        // Auto-restart for continuous listening
+                        if (this.isActive) {
+                            setTimeout(() => {
+                                this.startListening();
+                            }, 1000);
+                        }
+                    };
+                    
+                } else {
+                    console.warn('⚠️ Speech recognition not supported');
+                    this.updateVoiceStatus('error', 'Not supported in this browser');
+                }
+            }
+            
+            async startAssistant() {
+                if (this.isActive) return;
+                
+                console.log('🎬 Starting SeeForMe Assistant');
+                this.announceToScreenReader('Starting SeeForMe assistant');
+                
+                // Hide start overlay, show main interface
+                this.elements.startOverlay.classList.add('hidden');
+                setTimeout(() => {
+                    this.elements.startOverlay.style.display = 'none';
+                    this.elements.mainInterface.classList.add('active');
+                }, 500);
+                
+                this.isActive = true;
+                
+                // Request camera permission
+                await this.initializeCamera();
+                
+                // Start voice recognition
+                this.socket.emit('start_assistant');
+                
+                // Start listening
+                this.startListening();
+            }
+            
+            async initializeCamera() {
+                try {
+                    console.log('📹 Requesting camera permission');
+                    this.updateCameraStatus('requesting', 'Requesting permission...');
+                    
+                    const stream = await navigator.mediaDevices.getUserMedia({
+                        video: { facingMode: 'user' },
+                        audio: false
+                    });
+                    
+                    this.mediaStream = stream;
+                    this.elements.cameraVideo.srcObject = stream;
+                    this.elements.cameraPreview.style.display = 'block';
+                    
+                    this.updateCameraStatus('active', 'Front camera active');
+                    this.socket.emit('camera_permission', { permitted: true });
+                    
+                    console.log('✅ Camera initialized');
+                    this.announceToScreenReader('Camera permission granted');
+                    
+                } catch (error) {
+                    console.error('❌ Camera initialization failed:', error);
+                    this.updateCameraStatus('error', 'Permission denied');
+                    this.socket.emit('camera_permission', { permitted: false });
+                    this.announceToScreenReader('Camera permission denied');
+                }
+            }
+            
+            startListening() {
+                if (this.speechRecognition && !this.isListening) {
+                    try {
+                        this.speechRecognition.start();
+                    } catch (error) {
+                        console.error('❌ Failed to start speech recognition:', error);
+                    }
+                }
+            }
+            
+            stopListening() {
+                if (this.speechRecognition && this.isListening) {
+                    this.speechRecognition.stop();
+                }
+            }
+            
+            updateAvatarState(state) {
+                const avatar = this.elements.assistantAvatar;
+                const waves = this.elements.voiceWaves;
+                
+                // Remove all state classes
+                avatar.classList.remove('listening', 'speaking', 'processing');
+                waves.classList.remove('active');
+                
+                // Add current state
+                switch (state) {
+                    case 'listening':
+                        avatar.classList.add('listening');
+                        waves.classList.add('active');
+                        this.elements.assistantIcon.className = 'fas fa-microphone assistant-icon';
+                        break;
+                    case 'speaking':
+                        avatar.classList.add('speaking');
+                        this.elements.assistantIcon.className = 'fas fa-volume-up assistant-icon';
+                        break;
+                    case 'processing':
+                        avatar.classList.add('processing');
+                        this.elements.assistantIcon.className = 'fas fa-brain assistant-icon';
+                        break;
+                    default:
+                        this.elements.assistantIcon.className = 'fas fa-robot assistant-icon';
+                }
+            }
+            
+            updateVoiceStatus(status, text) {
+                const icon = this.elements.voiceStatusIcon;
+                const textEl = this.elements.voiceStatusText;
+                
+                icon.classList.remove('active', 'inactive', 'error');
+                
+                switch (status) {
+                    case 'listening':
+                        icon.classList.add('active');
+                        break;
+                    case 'error':
+                        icon.classList.add('error');
+                        break;
+                    default:
+                        icon.classList.add('inactive');
+                }
+                
+                textEl.textContent = `Voice: ${text}`;
+            }
+            
+            updateCameraStatus(status, text) {
+                const icon = this.elements.cameraStatusIcon;
+                const textEl = this.elements.cameraStatusText;
+                
+                icon.classList.remove('active', 'inactive', 'error');
+                
+                switch (status) {
+                    case 'active':
+                        icon.classList.add('active');
+                        break;
+                    case 'error':
+                        icon.classList.add('error');
+                        break;
+                    default:
+                        icon.classList.add('inactive');
+                }
+                
+                textEl.textContent = `Camera: ${text}`;
+            }
+            
+            handleSystemStatus(data) {
+                console.log('📊 System status:', data);
+                
+                if (data.status === 'ready') {
+                    this.elements.aiStatusIcon.classList.remove('inactive', 'error');
+                    this.elements.aiStatusIcon.classList.add('active');
+                    this.elements.aiStatusText.textContent = 'AI: Ready';
+                    
+                    this.announceToScreenReader('SeeForMe is ready to help');
+                }
+            }
+            
+            handleAssistantStarted(data) {
+                console.log('✅ Assistant started:', data);
+                this.announceToScreenReader(data.message);
+            }
+            
+            handleSpeechRecognized(data) {
+                console.log('👤 Speech recognized:', data);
+                this.updateAvatarState('processing');
+                this.announceToScreenReader(`You said: ${data.text}`);
+            }
+            
+            handleProcessingIntent(data) {
+                console.log('🧠 Processing intent:', data);
+                
+                if (data.camera_mode) {
+                    this.announceToScreenReader(`Switching to ${data.camera_mode} camera for analysis`);
+                }
+            }
+            
+            handleCameraSwitched(data) {
+                console.log('📹 Camera switched:', data);
+                
+                this.currentCameraMode = data.mode;
+                this.elements.cameraStatusBadge.textContent = `${data.mode.charAt(0).toUpperCase() + data.mode.slice(1)} Camera`;
+                this.elements.cameraStatusBadge.className = `camera-status ${data.mode}`;
+                
+                this.announceToScreenReader(`Switched to ${data.mode} camera`);
+            }
+            
+            handleAssistantResponse(data) {
+                console.log('🤖 Assistant response:', data);
+                
+                // Update avatar state
+                this.updateAvatarState('speaking');
+                
+                // Show response
+                this.showResponse(data.text);
+                
+                // Speak response
+                if (data.speak) {
+                    this.speakText(data.text);
+                }
+                
+                // Announce to screen reader
+                this.announceToScreenReader(`Assistant: ${data.text}`);
+            }
+            
+            showResponse(text) {
+                this.elements.responseText.textContent = text;
+                this.elements.responseTimestamp.textContent = new Date().toLocaleTimeString();
+                this.elements.responseContainer.classList.add('visible');
+                
+                // Auto-hide after 8 seconds
+                setTimeout(() => {
+                    this.elements.responseContainer.classList.remove('visible');
+                }, 8000);
+            }
+            
+            speakText(text) {
+                if (this.speechSynthesis) {
+                    // Cancel any ongoing speech
+                    this.speechSynthesis.cancel();
+                    
+                    const utterance = new SpeechSynthesisUtterance(text);
+                    utterance.rate = 0.9;
+                    utterance.pitch = 1.0;
+                    utterance.volume = 1.0;
+                    
+                    // Find a natural voice
+                    const voices = this.speechSynthesis.getVoices();
+                    const preferredVoice = voices.find(voice => 
+                        voice.lang.startsWith('en') && 
+                        (voice.name.includes('Natural') || voice.name.includes('Premium'))
+                    ) || voices.find(voice => voice.lang.startsWith('en'));
+                    
+                    if (preferredVoice) {
+                        utterance.voice = preferredVoice;
+                    }
+                    
+                    utterance.onstart = () => {
+                        this.elements.speakingIndicator.style.display = 'inline';
+                        this.updateAvatarState('speaking');
+                    };
+                    
+                    utterance.onend = () => {
+                        this.elements.speakingIndicator.style.display = 'none';
+                        this.updateAvatarState('idle');
+                    };
+                    
+                    this.speechSynthesis.speak(utterance);
+                }
+            }
+            
+            updateStatusPanel(data) {
+                console.log('📊 Status update:', data);
+                
+                if (data.components) {
+                    // Update component statuses
+                    Object.keys(data.components).forEach(component => {
+                        const status = data.components[component];
+                        this.updateComponentStatus(component, status);
+                    });
+                }
+            }
+            
+            updateComponentStatus(component, status) {
+                let icon, text;
+                
+                switch (component) {
+                    case 'speech':
+                        icon = this.elements.voiceStatusIcon;
+                        text = this.elements.voiceStatusText;
+                        break;
+                    case 'camera':
+                        icon = this.elements.cameraStatusIcon;
+                        text = this.elements.cameraStatusText;
+                        break;
+                    case 'gemma':
+                        icon = this.elements.aiStatusIcon;
+                        text = this.elements.aiStatusText;
+                        break;
+                    case 'tts':
+                        icon = this.elements.ttsStatusIcon;
+                        text = this.elements.ttsStatusText;
+                        break;
+                    default:
+                        return;
+                }
+                
+                if (icon && text) {
+                    icon.classList.remove('active', 'inactive', 'error');
+                    
+                    if (status.status === 'ready' || status.status === 'active') {
+                        icon.classList.add('active');
+                    } else if (status.status === 'error') {
+                        icon.classList.add('error');
+                    } else {
+                        icon.classList.add('inactive');
+                    }
+                    
+                    text.textContent = `${component.charAt(0).toUpperCase() + component.slice(1)}: ${status.status}`;
+                }
+            }
+            
+            announceToScreenReader(message) {
+                this.elements.srAnnouncements.textContent = message;
+                
+                // Clear after delay
+                setTimeout(() => {
+                    this.elements.srAnnouncements.textContent = '';
+                }, 3000);
+            }
+            
+            pauseAssistant() {
+                if (this.isActive) {
+                    this.stopListening();
+                    console.log('⏸️ Assistant paused');
+                }
+            }
+            
+            resumeAssistant() {
+                if (this.isActive && !this.isListening) {
+                    this.startListening();
+                    console.log('▶️ Assistant resumed');
+                }
+            }
+            
+
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            window.seeForMe = new SeeForMeAssistant();
+        });
+        
+        // Ensure voices are loaded
+        if ('speechSynthesis' in window) {
+            speechSynthesis.onvoiceschanged = () => {
+                console.log('🔊 Speech voices loaded');
+            };
+        }
+    </script>
+</body>
+</html>

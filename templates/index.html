@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SeeForMe - AI Vision Assistant for Accessibility</title>
+    
+    <!-- Bootstrap CSS with dark theme -->
+    <link href="https://cdn.replit.com/agent/bootstrap-agent-dark-theme.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome for icons -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <style>
+        :root {
+            --primary-purple: #6366f1;
+            --primary-blue: #3b82f6;
+            --accent-color: #8b5cf6;
+            --success-color: #10b981;
+            --warning-color: #f59e0b;
+            --error-color: #ef4444;
+            --bg-dark: #0f0f0f;
+            --bg-card: #1a1a1a;
+            --text-light: #f8fafc;
+            --text-muted: #94a3b8;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--bg-dark) 0%, #1e1e2e 100%);
+            color: var(--text-light);
+            font-family: 'Arial', sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        /* Full-screen start overlay */
+        .start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(135deg, var(--primary-purple) 0%, var(--primary-blue) 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            cursor: pointer;
+            transition: all 0.5s ease;
+        }
+        
+        .start-overlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+            transform: scale(0.95);
+        }
+        
+        .start-content {
+            text-align: center;
+            padding: 2rem;
+        }
+        
+        .start-title {
+            font-size: 3.5rem;
+            font-weight: bold;
+            margin-bottom: 1rem;
+            text-shadow: 0 4px 8px rgba(0,0,0,0.3);
+        }
+        
+        .start-subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+            opacity: 0.9;
+        }
+        
+        .start-instruction {
+            font-size: 1.2rem;
+            background: rgba(255,255,255,0.1);
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.2);
+            animation: pulse-glow 2s infinite;
+        }
+        
+        @keyframes pulse-glow {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(255,255,255,0.2);
+            }
+            50% { 
+                transform: scale(1.05);
+                box-shadow: 0 0 30px rgba(255,255,255,0.4);
+            }
+        }
+        
+        /* Main interface */
+        .main-interface {
+            display: none;
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        .main-interface.active {
+            display: block;
+        }
+        
+        /* Animated assistant avatar */
+        .assistant-container {
+            position: fixed;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+        }
+        
+        .assistant-avatar {
+            width: 120px;
+            height: 120px;
+            background: linear-gradient(135deg, var(--primary-purple), var(--primary-blue));
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .assistant-avatar.listening {
+            animation: listening-pulse 1.5s ease-in-out infinite;
+            box-shadow: 0 0 40px rgba(99, 102, 241, 0.6);
+        }
+        
+        .assistant-avatar.speaking {
+            animation: speaking-wave 0.8s ease-in-out infinite;
+        }
+        
+        .assistant-avatar.processing {
+            animation: processing-spin 2s linear infinite;
+        }
+        
+        @keyframes listening-pulse {
+            0%, 100% { 
+                transform: scale(1);
+                box-shadow: 0 0 20px rgba(99, 102, 241, 0.4);
+            }
+            50% { 
+                transform: scale(1.1);
+                box-shadow: 0 0 40px rgba(99, 102, 241, 0.8);
+            }
+        }
+        
+        @keyframes speaking-wave {
+            0%, 100% { transform: scale(1) rotate(0deg); }
+            25% { transform: scale(1.05) rotate(-2deg); }
+            75% { transform: scale(1.05) rotate(2deg); }
+        }
+        
+        @keyframes processing-spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .assistant-icon {
+            font-size: 3rem;
+            color: white;
+        }
+        
+        /* Voice waves */
+        .voice-waves {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            opacity: 0;
+        }
+        
+        .voice-waves.active {
+            opacity: 1;
+        }
+        
+        .wave {
+            position: absolute;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            animation: wave-expand 2s linear infinite;
+        }
+        
+        .wave:nth-child(1) { animation-delay: 0s; }
+        .wave:nth-child(2) { animation-delay: 0.5s; }
+        .wave:nth-child(3) { animation-delay: 1s; }
+        
+        @keyframes wave-expand {
+            0% {
+                width: 100%;
+                height: 100%;
+                opacity: 1;
+            }
+            100% {
+                width: 300%;
+                height: 300%;
+                opacity: 0;
+            }
+        }
+        
+        /* Camera preview */
+        .camera-preview {
+            position: fixed;
+            top: 2rem;
+            right: 2rem;
+            width: 200px;
+            height: 150px;
+            background: var(--bg-card);
+            border-radius: 15px;
+            border: 2px solid var(--accent-color);
+            overflow: hidden;
+            z-index: 50;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+        }
+        
+        .camera-preview video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .camera-status {
+            position: absolute;
+            top: 0.5rem;
+            left: 0.5rem;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 15px;
+            font-size: 0.8rem;
+        }
+        
+        .camera-status.front { border-left: 3px solid var(--warning-color); }
+        .camera-status.back { border-left: 3px solid var(--success-color); }
+        
+        /* Status panel */
+        .status-panel {
+            position: fixed;
+            top: 2rem;
+            left: 2rem;
+            background: rgba(26, 26, 26, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 1rem;
+            min-width: 250px;
+            border: 1px solid rgba(255,255,255,0.1);
+            z-index: 50;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+        
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .status-icon {
+            width: 20px;
+            margin-right: 0.5rem;
+        }
+        
+        .status-icon.active { color: var(--success-color); }
+        .status-icon.inactive { color: var(--text-muted); }
+        .status-icon.error { color: var(--error-color); }
+        
+        /* Response display */
+        .response-container {
+            position: fixed;
+            bottom: 160px;
+            left: 50%;
+            transform: translateX(-50%);
+            max-width: 600px;
+            width: 90%;
+            background: rgba(26, 26, 26, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 1.5rem;
+            border: 1px solid rgba(255,255,255,0.1);
+            opacity: 0;
+            transform: translateX(-50%) translateY(20px);
+            transition: all 0.3s ease;
+            z-index: 40;
+        }
+        
+        .response-container.visible {
+            opacity: 1;
+            transform: translateX(-50%) translateY(0);
+        }
+        
+        .response-text {
+            font-size: 1.1rem;
+            line-height: 1.6;
+            margin-bottom: 1rem;
+        }
+        
+        .response-meta {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: between;
+            align-items: center;
+        }
+        
+        /* Accessibility features */
+        .sr-only {
+            position: absolute !important;
+            width: 1px !important;
+            height: 1px !important;
+            padding: 0 !important;
+            margin: -1px !important;
+            overflow: hidden !important;
+            clip: rect(0, 0, 0, 0) !important;
+            white-space: nowrap !important;
+            border: 0 !important;
+        }
+        
+        /* High contrast mode */
+        @media (prefers-contrast: high) {
+            :root {
+                --bg-dark: #000000;
+                --bg-card: #111111;
+                --text-light: #ffffff;
+                --primary-purple: #8b5cf6;
+                --primary-blue: #60a5fa;
+            }
+        }
+        
+        /* Reduced motion */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+        
+        /* Mobile responsive */
+        @media (max-width: 768px) {
+            .start-title { font-size: 2.5rem; }
+            .start-subtitle { font-size: 1.2rem; }
+            .assistant-avatar { width: 100px; height: 100px; }
+            .assistant-icon { font-size: 2.5rem; }
+            .camera-preview { width: 150px; height: 112px; }
+            .status-panel { min-width: 200px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Screen reader announcements -->
+    <div id="sr-announcements" class="sr-only" role="status" aria-live="assertive" aria-atomic="true">
+        SeeForMe is loading...
+    </div>
+    
+    <!-- Full-screen start overlay -->
+    <div id="start-overlay" class="start-overlay">
+        <div class="start-content">
+            <h1 class="start-title">SeeForMe</h1>
+            <p class="start-subtitle">Your AI Vision Assistant</p>
+            <div class="start-instruction">
+                <i class="fas fa-hand-pointer me-2"></i>
+                Tap anywhere to start
+            </div>
+        </div>
+    </div>
+    
+    <!-- Main interface -->
+    <div id="main-interface" class="main-interface">
+        <!-- Status panel -->
+        <div id="status-panel" class="status-panel">
+            <div class="status-item">
+                <i id="voice-status-icon" class="fas fa-microphone status-icon inactive"></i>
+                <span id="voice-status-text">Voice: Initializing</span>
+            </div>
+            <div class="status-item">
+                <i id="camera-status-icon" class="fas fa-camera status-icon inactive"></i>
+                <span id="camera-status-text">Camera: Requesting permission</span>
+            </div>
+            <div class="status-item">
+                <i id="ai-status-icon" class="fas fa-brain status-icon inactive"></i>
+                <span id="ai-status-text">AI: Loading</span>
+            </div>
+            <div class="status-item">
+                <i id="tts-status-icon" class="fas fa-volume-up status-icon inactive"></i>
+                <span id="tts-status-text">Speech: Ready</span>
+            </div>
+        </div>
+        
+        <!-- Camera preview -->
+        <div id="camera-preview" class="camera-preview" style="display: none;">
+            <video id="camera-video" autoplay muted playsinline></video>
+            <div id="camera-status-badge" class="camera-status">Front Camera</div>
+        </div>
+        <!-- Response container -->
+        <div id="response-container" class="response-container">
+            <div id="response-text" class="response-text"></div>
+            <div class="response-meta">
+                <span id="response-timestamp"></span>
+                <i id="speaking-indicator" class="fas fa-volume-up" style="display: none;"></i>
+            </div>
+        </div>
+        
+        <!-- Animated assistant avatar -->
+        <div class="assistant-container">
+            <div id="assistant-avatar" class="assistant-avatar">
+                <i id="assistant-icon" class="fas fa-robot assistant-icon"></i>
+                <div id="voice-waves" class="voice-waves">
+                    <div class="wave"></div>
+                    <div class="wave"></div>
+                    <div class="wave"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Audio element for TTS -->
+    <audio id="tts-audio" preload="auto"></audio>
+    
+ <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.js"></script>
+<script>
+    class SeeForMeAssistant {
+        constructor() {
+            this.elements = {
+                startOverlay: document.getElementById('start-overlay'),
+                mainInterface: document.getElementById('main-interface'),
+                avatar: document.getElementById('assistant-avatar'),
+                icon: document.getElementById('assistant-icon'),
+                voiceWaves: document.getElementById('voice-waves'),
+                voiceStatusIcon: document.getElementById('voice-status-icon'),
+                voiceStatusText: document.getElementById('voice-status-text'),
+                cameraStatusIcon: document.getElementById('camera-status-icon'),
+                cameraStatusText: document.getElementById('camera-status-text'),
+                aiStatusIcon: document.getElementById('ai-status-icon'),
+                aiStatusText: document.getElementById('ai-status-text'),
+                ttsStatusIcon: document.getElementById('tts-status-icon'),
+                ttsStatusText: document.getElementById('tts-status-text'),
+                responseContainer: document.getElementById('response-container'),
+                responseText: document.getElementById('response-text'),
+                responseTimestamp: document.getElementById('response-timestamp'),
+                speakingIndicator: document.getElementById('speaking-indicator'),
+                cameraPreview: document.getElementById('camera-preview'),
+                cameraVideo: document.getElementById('camera-video'),
+                cameraStatusBadge: document.getElementById('camera-status-badge'),
+                srAnnouncements: document.getElementById('sr-announcements')
+            };
+
+            this.socket = null;
+            this.isRecording = false;
+            this.mediaRecorder = null;
+            this.audioChunks = [];
+            this.stream = null;
+            this.isProcessing = false;
+            this.isActive = false;
+            this.recordingTimeout = null;
+            
+            this.setupEventListeners();
+            this.setupSocketIO();
+            this.updateAvatarState('idle');
+        }
+
+        setupSocketIO() {
+            this.socket = io();
+
+            this.socket.on('connect', () => {
+                console.log('✅ Connected to server via Socket.IO');
+                this.updateStatus('online');
+                this.announceToScreenReader('Connected to the assistant.');
+                this.updateAvatarState('idle');
+            });
+
+            this.socket.on('disconnect', () => {
+                console.log('❌ Disconnected from server');
+                this.updateStatus('offline');
+                this.announceToScreenReader('Connection lost. Please refresh the page.');
+                this.updateAvatarState('idle');
+            });
+
+            this.socket.on('response_audio', (data) => {
+                this.isProcessing = false;
+                this.stopProcessingIndicator();
+                this.updateAvatarState('speaking');
+                this.showResponseText(data.text);
+                this.playAudioResponse(data.audio_data);
+                this.announceToScreenReader(data.text);
+            });
+
+            this.socket.on('response_text', (data) => {
+                this.isProcessing = false;
+                this.stopProcessingIndicator();
+                this.updateAvatarState('idle');
+                this.showResponseText(data.text);
+                this.announceToScreenReader(data.text);
+            });
+            
+            this.socket.on('transcription_result', (data) => {
+                console.log('Transcription received:', data.text);
+                this.showResponseText('You said: ' + data.text);
+                this.updateAvatarState('processing');
+                this.isProcessing = true;
+            });
+            
+            this.socket.on('request_scene_frame', (data) => {
+                this.captureAndSendVisionFrame(data.user_text, data.language);
+            });
+            
+            this.socket.on('error', (data) => {
+                console.error('Server error:', data);
+                this.updateStatus('error');
+                this.showResponseText('An error occurred: ' + data.message);
+                this.isProcessing = false;
+                this.updateAvatarState('idle');
+            });
+            
+            this.socket.on('server_status', (data) => {
+                console.log('Server status:', data);
+                this.showResponseText(data.message);
+            });
+        }
+
+        setupEventListeners() {
+            // Start overlay click handler
+            this.elements.startOverlay.addEventListener('click', () => {
+                this.elements.startOverlay.classList.add('hidden');
+                setTimeout(() => {
+                    this.elements.mainInterface.classList.add('active');
+                    this.isActive = true;
+                    this.initializeServices();
+                }, 500);
+            });
+            
+            // Avatar click to start/stop listening
+            this.elements.avatar.addEventListener('click', () => {
+                if (!this.isActive) return;
+                
+                if (!this.isRecording) {
+                    this.startListening();
+                } else {
+                    this.stopListening();
+                }
+            });
+        }
+        
+        initializeServices() {
+            // Initialize camera if available
+            this.initializeCamera();
+            
+            // Update status indicators
+            this.updateServiceStatus('voice', 'ready');
+            this.updateServiceStatus('camera', 'ready');
+            this.updateServiceStatus('ai', 'ready');
+            this.updateServiceStatus('tts', 'ready');
+        }
+        
+        initializeCamera() {
+            if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+                navigator.mediaDevices.getUserMedia({ 
+                    video: { 
+                        facingMode: 'user',
+                        width: { ideal: 640 },
+                        height: { ideal: 480 }
+                    } 
+                })
+                    .then(stream => {
+                        this.elements.cameraVideo.srcObject = stream;
+                        this.elements.cameraPreview.style.display = 'block';
+                        this.updateServiceStatus('camera', 'active');
+                    })
+                    .catch(error => {
+                        console.error('Camera access denied:', error);
+                        this.updateServiceStatus('camera', 'error');
+                    });
+            } else {
+                console.error('Camera not available');
+                this.updateServiceStatus('camera', 'error');
+            }
+        }
+
+        updateStatus(status) {
+            // Update overall status if needed
+        }
+        
+        updateServiceStatus(service, status) {
+            const statusMap = {
+                'ready': { icon: 'inactive', text: 'Ready' },
+                'active': { icon: 'active', text: 'Active' },
+                'error': { icon: 'error', text: 'Error' }
+            };
+            
+            const statusInfo = statusMap[status] || statusMap['error'];
+            
+            switch(service) {
+                case 'voice':
+                    this.elements.voiceStatusIcon.className = `fas fa-microphone status-icon ${statusInfo.icon}`;
+                    this.elements.voiceStatusText.textContent = `Voice: ${statusInfo.text}`;
+                    break;
+                case 'camera':
+                    this.elements.cameraStatusIcon.className = `fas fa-camera status-icon ${statusInfo.icon}`;
+                    this.elements.cameraStatusText.textContent = `Camera: ${statusInfo.text}`;
+                    break;
+                case 'ai':
+                    this.elements.aiStatusIcon.className = `fas fa-brain status-icon ${statusInfo.icon}`;
+                    this.elements.aiStatusText.textContent = `AI: ${statusInfo.text}`;
+                    break;
+                case 'tts':
+                    this.elements.ttsStatusIcon.className = `fas fa-volume-up status-icon ${statusInfo.icon}`;
+                    this.elements.ttsStatusText.textContent = `Speech: ${statusInfo.text}`;
+                    break;
+            }
+        }
+
+        updateAvatarState(state) {
+            // Remove all state classes first
+            this.elements.avatar.classList.remove('listening', 'speaking', 'processing');
+            this.elements.voiceWaves.classList.remove('active');
+            
+            // Add the appropriate state class
+            if (state !== 'idle') {
+                this.elements.avatar.classList.add(state);
+                
+                if (state === 'listening' || state === 'speaking') {
+                    this.elements.voiceWaves.classList.add('active');
+                }
+            }
+            
+            // Update icon based on state
+            const iconMap = {
+                'idle': 'fa-robot',
+                'listening': 'fa-microphone-lines',
+                'processing': 'fa-brain',
+                'speaking': 'fa-volume-high'
+            };
+            
+            this.elements.icon.className = `fas ${iconMap[state]} assistant-icon`;
+        }
+        
+        startProcessingIndicator() {
+            this.updateAvatarState('processing');
+        }
+        
+        stopProcessingIndicator() {
+            this.updateAvatarState('idle');
+        }
+
+        startListening() {
+            if (this.isRecording || this.isProcessing) {
+                console.log('Already recording or processing...');
+                return;
+            } 
+            
+
+            navigator.mediaDevices.getUserMedia({ 
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true,
+                    sampleRate: 44100
+                }
+            })
+                .then(stream => {
+                    this.stream = stream;
+                    
+                    // Use audio/webm;codecs=opus for better compatibility
+                    const options = {
+                        mimeType: 'audio/webm;codecs=opus'
+                    };
+                    
+                    // Fallback options if webm is not supported
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options.mimeType = 'audio/webm';
+                        if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                            options.mimeType = 'audio/mp4';
+                            if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                                delete options.mimeType;
+                            }
+                        }
+                    }
+
+                    this.mediaRecorder = new MediaRecorder(stream, options);
+                    this.audioChunks = [];
+
+                    this.mediaRecorder.ondataavailable = event => {
+                        if (event.data.size > 0) {
+                            this.audioChunks.push(event.data);
+                        }
+                    };
+
+                    this.mediaRecorder.onstop = () => {
+                        const audioBlob = new Blob(this.audioChunks, { 
+                            type: this.mediaRecorder.mimeType || 'audio/webm' 
+                        });
+
+                        this.audioChunks = [];
+                        this.sendAudioToServer(audioBlob);
+                        this.stream.getTracks().forEach(track => track.stop());
+                        this.stream = null;
+                    };
+                   
+                    // Start recording
+                    this.mediaRecorder.start(1000); // Record in 1 second chunks
+                    this.isRecording = true;
+                    this.updateAvatarState('listening');
+                    this.updateServiceStatus('voice', 'active');
+                    this.announceToScreenReader('Listening...');
+                    console.log('▶️ Recording started');
+                     // If user stays silent for more than 15 seconds, capture frame for emotion
+                    this.silenceTimeout = setTimeout(() => {
+                        this.captureAndSendVisionFrame("How is the user feeling?", "en", "emotion_detection");
+                    }, 15000);
+                    // Auto-stop after 10 seconds
+                    this.recordingTimeout = setTimeout(() => {
+                        if (this.isRecording) {
+                            this.stopListening();
+                        }
+                    }, 10000);
+                })
+                .catch(error => {
+                    console.error('❌ Error accessing microphone:', error);
+                    this.updateServiceStatus('voice', 'error');
+                    this.showResponseText('Microphone access denied. Please enable it in your browser settings.');
+                });
+        }
+
+        stopListening() {
+            if (this.recordingTimeout) {
+                clearTimeout(this.recordingTimeout);
+                this.recordingTimeout = null;
+            }
+            
+            if (this.isRecording && this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
+                this.mediaRecorder.stop();
+                this.isRecording = false;
+                this.updateServiceStatus('voice', 'ready');
+                this.updateAvatarState('processing');
+                console.log('⏹️ Recording stopped');
+            }
+        }
+        
+        sendAudioToServer(audioBlob) {
+            console.log('Preparing audio for server. Blob size:', audioBlob.size, 'Type:', audioBlob.type);
+            
+            if (audioBlob.size === 0) {
+                console.error('Audio blob is empty');
+                this.showResponseText('No audio recorded. Please try again.');
+                this.updateAvatarState('idle');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                try {
+                    const arrayBuffer = reader.result;
+                    const base64Audio = this.arrayBufferToBase64(arrayBuffer);
+                    
+                    console.log('Sending audio to server. Base64 length:', base64Audio.length);
+                    
+                    // Send audio data to server
+                    this.socket.emit('user_audio', { 
+                        audio_data: base64Audio, 
+                        language: 'en',
+                        format: audioBlob.type || 'audio/webm'
+                    });
+                    
+                    this.announceToScreenReader('Processing your message...');
+                    
+                } catch (error) {
+                    console.error('Error processing audio:', error);
+                    this.showResponseText('Error processing audio. Please try again.');
+                    this.updateAvatarState('idle');
+                    this.isProcessing = false;
+                }
+            };
+            
+            reader.onerror = () => {
+                console.error('Error reading audio file');
+                this.showResponseText('Error reading audio. Please try again.');
+                this.updateAvatarState('idle');
+                this.isProcessing = false;
+            };
+            
+            reader.readAsArrayBuffer(audioBlob);
+        }
+        
+        arrayBufferToBase64(buffer) {
+            let binary = '';
+            const bytes = new Uint8Array(buffer);
+            const len = bytes.byteLength;
+            for (let i = 0; i < len; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        captureAndSendVisionFrame(userText = 'What am I looking at?', language = 'en', type = 'scene_description') {
+            if (!this.socket) {
+                console.error('Socket not connected.');
+                return;
+            }
+
+            const video = this.elements.cameraVideo;
+            if (!video || !video.srcObject) {
+                console.error('Camera not available');
+                this.showResponseText('Camera not available. Please enable camera access.');
+                return;
+            }
+
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+            const context = canvas.getContext('2d');
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const imageData = canvas.toDataURL('image/jpeg', 0.8);
+
+            this.socket.emit('vision_input', { 
+                image_data: imageData,
+                type: type,  // ✅ can be 'scene_description' or 'emotion_detection'
+                user_text: userText,
+                language: language
+            });
+
+            console.log(`📸 Captured and sent ${type} frame.`);
+            this.showResponseText(type === "emotion_detection" ? "Analyzing your emotion..." : "Analyzing the scene...");
+            this.updateAvatarState('processing');
+        }
+            
+
+        playAudioResponse(base64Audio) {
+            try {
+                const audioBlob = this.base64ToBlob(base64Audio, 'audio/mp3');
+                const audioUrl = URL.createObjectURL(audioBlob);
+                const audioElement = document.getElementById('tts-audio');
+                
+                audioElement.src = audioUrl;
+                audioElement.onended = () => {
+                    this.updateAvatarState('idle');
+                    this.elements.speakingIndicator.style.display = 'none';
+                    URL.revokeObjectURL(audioUrl);
+                };
+                
+                audioElement.onplay = () => {
+                    this.elements.speakingIndicator.style.display = 'inline';
+                };
+                
+                audioElement.play().catch(error => {
+                    console.error('Error playing audio:', error);
+                    this.updateAvatarState('idle');
+                    this.elements.speakingIndicator.style.display = 'none';
+                });
+            } catch (error) {
+                console.error('Error processing audio response:', error);
+                this.updateAvatarState('idle');
+                this.elements.speakingIndicator.style.display = 'none';
+            }
+        }
+        
+        base64ToBlob(base64, mimeType) {
+            const byteCharacters = atob(base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            return new Blob([byteArray], {type: mimeType});
+        }
+
+        showResponseText(text) {
+            this.elements.responseText.textContent = text;
+            this.elements.responseTimestamp.textContent = new Date().toLocaleTimeString();
+            this.elements.responseContainer.classList.add('visible');
+            
+            // Auto-hide after 10 seconds if not speaking
+            setTimeout(() => {
+                if (!this.elements.speakingIndicator.style.display || 
+                    this.elements.speakingIndicator.style.display === 'none') {
+                    this.elements.responseContainer.classList.remove('visible');
+                }
+            }, 10000);
+        }
+
+        announceToScreenReader(message) {
+            this.elements.srAnnouncements.textContent = message;
+            
+            // Clear after a short delay to allow repeated announcements
+            setTimeout(() => {
+                this.elements.srAnnouncements.textContent = '';
+            }, 1000);
+        }
+        
+        // Utility method to toggle camera
+        toggleCamera() {
+            if (this.elements.cameraPreview.style.display === 'none') {
+                this.initializeCamera();
+            } else {
+                if (this.elements.cameraVideo.srcObject) {
+                    this.elements.cameraVideo.srcObject.getTracks().forEach(track => track.stop());
+                }
+                this.elements.cameraPreview.style.display = 'none';
+                this.updateServiceStatus('camera', 'ready');
+            }
+        }
+        
+        // Utility method to switch camera (front/back)
+        switchCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+            
+            if (this.elements.cameraVideo.srcObject) {
+                this.elements.cameraVideo.srcObject.getTracks().forEach(track => track.stop());
+            }
+            
+            const currentFacingMode = this.elements.cameraStatusBadge.classList.contains('front') ? 'user' : 'environment';
+            const newFacingMode = currentFacingMode === 'user' ? 'environment' : 'user';
+            
+            navigator.mediaDevices.getUserMedia({ 
+                video: { 
+                    facingMode: newFacingMode,
+                    width: { ideal: 640 },
+                    height: { ideal: 480 }
+                } 
+            })
+                .then(stream => {
+                    this.elements.cameraVideo.srcObject = stream;
+                    this.elements.cameraPreview.style.display = 'block';
+                    this.elements.cameraStatusBadge.textContent = newFacingMode === 'user' ? 'Front Camera' : 'Back Camera';
+                    this.elements.cameraStatusBadge.className = `camera-status ${newFacingMode === 'user' ? 'front' : 'back'}`;
+                    this.updateServiceStatus('camera', 'active');
+                })
+                .catch(error => {
+                    console.error('Error switching camera:', error);
+                    this.updateServiceStatus('camera', 'error');
+                });
+        }
+    }
+
+    // Initialize the assistant when the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        window.seeForMeAssistant = new SeeForMeAssistant();
+        
+        // Add keyboard shortcuts
+        document.addEventListener('keydown', (event) => {
+            // Space bar to start/stop listening
+            if (event.code === 'Space' && window.seeForMeAssistant.isActive) {
+                event.preventDefault();
+                if (!window.seeForMeAssistant.isRecording) {
+                    window.seeForMeAssistant.startListening();
+                } else {
+                    window.seeForMeAssistant.stopListening();
+                }
+            }
+            
+            // 'C' key to toggle camera
+            if (event.code === 'KeyC' && window.seeForMeAssistant.isActive) {
+                event.preventDefault();
+                window.seeForMeAssistant.toggleCamera();
+            }
+            
+            // 'S' key to switch camera
+            if (event.code === 'KeyS' && window.seeForMeAssistant.isActive) {
+                event.preventDefault();
+                window.seeForMeAssistant.switchCamera();
+            }
+            
+            // 'Escape' key to stop listening or speaking
+            if (event.code === 'Escape' && window.seeForMeAssistant.isActive) {
+                event.preventDefault();
+                if (window.seeForMeAssistant.isRecording) {
+                    window.seeForMeAssistant.stopListening();
+                }
+                const audioElement = document.getElementById('tts-audio');
+                if (!audioElement.paused) {
+                    audioElement.pause();
+                    window.seeForMeAssistant.updateAvatarState('idle');
+                    window.seeForMeAssistant.elements.speakingIndicator.style.display = 'none';
+                }
+            }
+        });
+    });
+</script>
+</body>
+</html>
