@@ -311,16 +311,18 @@ def handle_vision_input(data):
 
 
 if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5000))
+    import os
+    import threading
+    import asyncio
+
+    port = int(os.getenv("PORT", 7860))
     logger.info(f"Starting SeeForMe server on port {port}")
-    
-    # Start the global event loop in a separate thread
+
     def run_loop():
         asyncio.set_event_loop(global_loop)
         global_loop.run_forever()
-    
-    import threading
+
     loop_thread = threading.Thread(target=run_loop, daemon=True)
     loop_thread.start()
-    
-    socketio.run(app, host="0.0.0.0", port=port, debug=True)
+
+    socketio.run(app, host="0.0.0.0", port=port)
